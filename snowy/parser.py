@@ -3,10 +3,12 @@ Parser for GSOD weather data format
 
 ftp://ftp.ncdc.noaa.gov/pub/data/gsod/readme.txt
 """
+import os
+import time
 import urllib.error
+import urllib.request
 
 import pandas
-import time
 
 columns = (
     # start, stop, name, missing, type
@@ -30,7 +32,7 @@ columns = (
     (102, 108, 'max_temp', '9999.9'),
     (108, 109, 'max_flag', None),
     (110, 116, 'min_temp', '9999.9'),
-    (118, 123, 'precipitation', '99.9'),
+    (118, 123, 'precipitation', '99.99'),
     (123, 124, 'precipitation_flag', None),
     (125, 130, 'snow_depth', '999.9'),
     (132, 133, 'fog', None),
@@ -42,18 +44,26 @@ columns = (
 )
 
 
+def load(url):
+    filename = os.path.join('data', url.split('/')[-1])
+    if not os.path.exists(filename):
+
+        while True:
+            try:
+                time.sleep(5)
+                print('Fetching {}'.format(url))
+                with urllib.request.urlopen(url) as request:
+                    with open(filename, 'wb') as file:
+                        file.write(request.read())
+                break
+            except urllib.error.URLError as exc:
+                print('Could not load {} exception {}'.format(url, exc))
+                time.sleep(10)
+
+    return parse(filename)
+
+
 def parse(filename):
-    while True:
-        try:
-            frame = attempt(filename)
-            break
-        except urllib.error.URLError as exc:
-            print('Could not load {} exception {}'.format(filename, exc))
-            time.sleep(10)
-    return frame
-
-
-def attempt(filename):
     start, stop, names, missing = zip(*columns)
     missing = dict(zip(names, missing))
     positions = list(zip(start, stop))
