@@ -44,7 +44,7 @@ columns = (
 )
 
 
-def load(url):
+def load(url, call_sign):
     filename = os.path.join('data', url.split('/')[-1])
     if not os.path.exists(filename):
 
@@ -60,13 +60,16 @@ def load(url):
                 print('Could not load {} exception {}'.format(url, exc))
                 time.sleep(10)
 
-    return parse(filename)
+    return parse(filename, call_sign)
 
 
-def parse(filename):
+def parse(filename, call_sign):
     start, stop, names, missing = zip(*columns)
     missing = dict(zip(names, missing))
     positions = list(zip(start, stop))
-    data = pandas.read_fwf(filename, colspecs=positions, names=names, na_values=missing,
-                           skiprows=1, compression='gzip', index_col=[0, 2])
-    return data
+    frame = pandas.read_fwf(filename, colspecs=positions, names=names, na_values=missing,
+                            skiprows=1, compression='gzip', index_col=2)
+    # convert the index to datetime and add station to the columns
+    frame.index = pandas.DatetimeIndex(pandas.to_datetime(frame.index, format='%Y%m%d'))
+    frame.columns = pandas.MultiIndex.from_product(([call_sign], frame.columns))
+    return frame

@@ -3,17 +3,13 @@ Prepare the weather data
 """
 import io
 import os
-import time
-import datetime
 
 import pandas
-import sklearn
 
 from . import parser
 
 station_data = """\
 724940 23234 SAN FRANCISCO INTERNATIONAL A US   CA KSFO  +37.620 -122.365 +0002.4 19730101 20171125
-719170 99999 EUREKA                        CA      CWEU  +79.983 -085.933 +0010.0 19470501 20171124
 727930 24233 SEATTLE-TACOMA INTERNATIONAL  US   WA KSEA  +47.444 -122.314 +0112.8 19480101 20171125
 724880 23185 RENO/TAHOE INTERNATIONAL AIRP US   NV KRNO  +39.484 -119.771 +1344.2 19430105 20171125
 723677 23054 LAS VEGAS MUNICIPAL ARPT      US   NM KLVS  +35.654 -105.142 +2095.2 19460801 20171125
@@ -58,31 +54,45 @@ def get_station_history():
 def get_data():
     cache_file = 'data/data.csv'
     if os.path.exists(cache_file):
-        return pandas.read_csv(cache_file, index_col=[0, 1])
+        return pandas.read_csv(cache_file, index_col=0, header=[0, 1], parse_dates=True)
 
     stations = get_stations()
-    frames = []
-    for station in stations.itertuples():
-        for year in range(1990, 2018):
-            filename = 'ftp://ftp.ncdc.noaa.gov/pub/data/gsod/{year}/{station}-{wban}-{year}' \
+    year_frames = []
+    for year in range(1990, 2018):
+        station_frames = []
+        for station in stations.itertuples():
+            url = 'ftp://ftp.ncdc.noaa.gov/pub/data/gsod/{year}/{station}-{wban}-{year}' \
                        '.op.gz'.format(year=year, station=station.Index, wban=station.wban)
-            frame = parser.load(filename)
-            frames.append(frame)
+            frame = parser.load(url, station.call_sign)
+            station_frames.append(frame)
 
-    frame = pandas.concat(frames)
+        frame = pandas.concat(station_frames, axis=1)
+        year_frames.append(frame)
+
+    frame = pandas.concat(year_frames)
     frame.to_csv(cache_file)
+
+    # show the results
+    # frame.describe().loc[:, (slice(None), 'max_temp')]
 
     return frame
 
 
 def format_data(frame):
+    stations = get_stations()
+
     # regularize to float 0-1
-    for column in ('temperature', 'pressure', 'precipitation', 'wind_speed'):
-        values = frame[column]
-        frame.loc[:, column + '_norm'] = (values - values.mean()) / (values.max() - values.min())
+    for station in stations.itertuples():
+        for column in ('temperature', 'pressure', 'precipitation', 'wind_speed'):
+            values = frame.loc[:, (station.call_sign, column)]
+            frame.loc[:, (station.call_sign, column + '_norm')] = \
+                (values - values.mean()) / (values.max() - values.min())
+
+    # fill missing data
+    frame.fillna(0, inplace=True)
 
     # dependent variable is SLC precipitation
-    y = frame.loc[725720]['precipitation_norm'][60:2000]
+    y = frame.iloc[60:, :].loc[:, ('KSLC', 'precipitation_norm')]
 
     cache_file = 'data/data_x.csv'
     if os.path.exists(cache_file):
@@ -91,21 +101,22 @@ def format_data(frame):
 
     # independent variables are precipitation, temperature, pressure, and wind_speed
     # 4 variables * 6 stations * 30 days = 720 variables?
-    stations = get_stations()
     x = []
 
     for index in range(len(y)):
+        start = frame.index[index]
+        stop = frame.index[index + 29]
         date = y.index[index]
-        print('Now indexing {}'.format(date))
+        print(f'Now populating {date}')
 
         row = []
         for station in stations.itertuples():
-            window = frame.loc[station.Index][index:index + 30]
+            window = frame.loc[start:stop, station.call_sign]
 
             for column in ('temperature', 'pressure', 'precipitation', 'wind_speed'):
-                columns = ['{}_{}_{}'.format(station.call_sign, column, x) for x in range(30)]
+                names = [f'{station.call_sign}_{column[:4]}_{x}' for x in range(30)]
                 array = [list(window[column + '_norm'])]
-                array = pandas.DataFrame(array, index=[date], columns=columns)
+                array = pandas.DataFrame(array, index=[date], columns=names)
                 row.append(array)
 
         x.append(pandas.concat(row, axis=1))
