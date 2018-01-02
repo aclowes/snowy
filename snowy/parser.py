@@ -73,3 +73,11 @@ def parse(filename, call_sign):
     frame.index = pandas.DatetimeIndex(pandas.to_datetime(frame.index, format='%Y%m%d'))
     frame.columns = pandas.MultiIndex.from_product(([call_sign], frame.columns))
     return frame
+
+
+def parse_snotel(filename):
+    frame = pandas.read_csv(
+        cache_file, index_col=[0], parse_dates=True, skiprows=59,
+        columns=['date', 'water', 'total_prec', 'max', 'min', 'avg', 'prec']
+    )
+    return frame[:-1]

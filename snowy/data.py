@@ -62,7 +62,7 @@ def get_data():
         station_frames = []
         for station in stations.itertuples():
             url = 'ftp://ftp.ncdc.noaa.gov/pub/data/gsod/{year}/{station}-{wban}-{year}' \
-                       '.op.gz'.format(year=year, station=station.Index, wban=station.wban)
+                  '.op.gz'.format(year=year, station=station.Index, wban=station.wban)
             frame = parser.load(url, station.call_sign)
             station_frames.append(frame)
 
@@ -96,7 +96,7 @@ def format_data(frame):
 
     cache_file = 'data/data_x.csv'
     if os.path.exists(cache_file):
-        x = pandas.read_csv(cache_file, index_col=[0])
+        x = pandas.read_csv(cache_file, index_col=[0], parse_dates=True)
         return x, y
 
     # independent variables are precipitation, temperature, pressure, and wind_speed
@@ -125,3 +125,46 @@ def format_data(frame):
     x.to_csv(cache_file)
 
     return x, y
+
+
+def group_weeks(frame):
+    cache_file = 'data/data_weekly.csv'
+    if os.path.exists(cache_file):
+        return pandas.read_csv(cache_file, index_col=[0], parse_dates=True)
+
+    variables = ('temperature', 'pressure', 'precipitation', 'wind_speed')
+    stations = frame.columns.levels[0]
+    rows = []
+    week = 0
+
+    while week < len(frame) / 7 - 9:
+        columns = []
+        values = []
+        index = []
+
+        for station in stations:
+            if station == 'KSLC':
+                start = (week + 8) * 7
+                end = start + 7
+                index.append(frame.index[start])
+                columns.append('KSLC_prec')
+                values.append(
+                    frame.KSLC.precipitation_norm.iloc[start:end].mean()
+                )
+                continue
+            for column in variables:
+                series = frame[station][f'{column}_norm']
+                for x in range(4):
+                    start = (week + x) * 7
+                    end = start + 7
+                    columns.append(f'{station}_{column[:4]}_{x}')
+                    values.append(series.iloc[start:end].mean())
+
+        rows.append(
+            pandas.DataFrame([values], index=index, columns=columns)
+        )
+        week += 1
+
+    weekly = pandas.concat(rows)
+    weekly.to_csv(cache_file)
+    return weekly.drop('KSLC_prec', axis=1), weekly.KSLC_prec

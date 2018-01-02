@@ -1,5 +1,6 @@
-pandas==0.21.0
+pandas==0.20.2  # some plotting bug https://stackoverflow.com/a/45191625
 keras==2.1.1
 scikit-learn==0.19.1
 tensorflow==1.4.0
 matplotlib==2.1.0
+ipython==6.2.1

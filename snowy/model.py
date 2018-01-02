@@ -1,41 +1,52 @@
+import pandas
 import matplotlib.pyplot as plt
-from keras import models, layers, losses, optimizers
+from keras import models, layers, regularizers
 from sklearn.model_selection import train_test_split
 
 
 def train_model(x, y):
-    # y2 = y.apply(lambda x: 1 if x > 0.1 else 0)
-    # y2.describe()
-
     x_train, x_test, y_train, y_test = train_test_split(
         x, y, test_size=0.2, random_state=42
     )
 
-    m = models.Sequential()
-    m.add(layers.Dense(units=32, activation='relu', input_dim=720))
-
     # relu is the new hotness, tanh is traditional
     # sigmoid is good last step for classification
-    m.add(layers.Dense(1, activation='relu'))
+    m = models.Sequential()
+    m.add(layers.Dense(80, activation='relu', input_dim=80))
+    # m.add(layers.BatchNormalization())
+    m.add(layers.Dense(80, activation='relu', input_dim=80))
+    m.add(layers.Dense(1))
+    # sgd optomizer is common for categorization, adam is good for linear
+    m.compile(loss='mean_squared_error', optimizer='adam')
+    history = m.fit(
+        x_train.as_matrix(), y_train.as_matrix(),
+        epochs=80, batch_size=80,
+        validation_data=(x_test.as_matrix(), y_test.as_matrix())
+    )
 
-    m.compile(loss=losses.mean_squared_error,
-              optimizer=optimizers.sgd())
-
-    # with tensorflow.device('/cpu:0'):
-    m.fit(x_train.as_matrix(), y_train.as_matrix(), epochs=100, batch_size=100)
-
-    loss_and_metrics = m.evaluate(x_test.as_matrix(), y_test.as_matrix(), batch_size=128, verbose=1)
-    pred = m.predict(x_test.as_matrix())
-
-    x = y_test.index
-    y1 = y_test
-    y2 = pred
-
-    plt.plot(y_test.index, y_test, '+b')
-    plt.plot(y_test.index, pred, 'or')
-    plt.title('SLC Weather predicted (o) vs actual (+)')
-    plt.ylabel('Inches of rain')
-    plt.xlabel('Date')
+    # plot the loss history over the epochs
+    pandas.DataFrame(history.history).plot()
     plt.show()
 
-    return m
+    # plot actual vs predicted - test data
+    pred = m.predict(x_test.as_matrix())
+    p = pandas.Series(pred.flatten())
+    p.index = y_test.index
+    print(f'Test data correlation {p.corr(y_test)}')
+    fig, ax = plt.subplots()
+    ax.yaxis.set_label('Actual')
+    ax.xaxis.set_label('Predicted')
+    ax.plot(y_test, p, '+b')
+    plt.show()
+
+    # plot actual vs predicted - train data
+    pred = m.predict(x_train.as_matrix())
+    p = pandas.Series(pred.flatten())
+    p.index = y_train.index
+    fig, ax = plt.subplots()
+    ax.yaxis.set_label('Actual')
+    ax.xaxis.set_label('Predicted')
+    ax.plot(y_train, p, '+b')
+    plt.show()
+
+    return history
