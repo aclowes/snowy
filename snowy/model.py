@@ -1,6 +1,6 @@
 import pandas
 import matplotlib.pyplot as plt
-from keras import models, layers, regularizers
+from keras import models, layers
 from sklearn.model_selection import train_test_split
 
 
@@ -12,15 +12,16 @@ def train_model(x, y):
     # relu is the new thing, tanh is traditional
     # sigmoid is good last step for classification
     m = models.Sequential()
-    m.add(layers.Dense(80, input_dim=720))
-    # m.add(layers.BatchNormalization())
-    m.add(layers.Dense(10, input_dim=80))
+    m.add(layers.Dense(360, input_dim=720))
+    m.add(layers.GaussianNoise(.1))
+    m.add(layers.Dense(45, input_dim=360))
+    m.add(layers.GaussianNoise(.1))
     m.add(layers.Dense(1))
     # sgd optimizer is common for categorization, adam is good for linear
     m.compile(loss='mean_squared_error', optimizer='adam')
     history = m.fit(
         x_train.as_matrix(), y_train.as_matrix(),
-        epochs=80, batch_size=80,
+        epochs=20, batch_size=80,
         validation_data=(x_test.as_matrix(), y_test.as_matrix())
     )
 
