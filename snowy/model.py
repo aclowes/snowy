@@ -9,14 +9,14 @@ def train_model(x, y):
         x, y, test_size=0.2, random_state=42
     )
 
-    # relu is the new hotness, tanh is traditional
+    # relu is the new thing, tanh is traditional
     # sigmoid is good last step for classification
     m = models.Sequential()
-    m.add(layers.Dense(80, activation='relu', input_dim=80))
+    m.add(layers.Dense(80, input_dim=720))
     # m.add(layers.BatchNormalization())
-    m.add(layers.Dense(80, activation='relu', input_dim=80))
+    m.add(layers.Dense(10, input_dim=80))
     m.add(layers.Dense(1))
-    # sgd optomizer is common for categorization, adam is good for linear
+    # sgd optimizer is common for categorization, adam is good for linear
     m.compile(loss='mean_squared_error', optimizer='adam')
     history = m.fit(
         x_train.as_matrix(), y_train.as_matrix(),

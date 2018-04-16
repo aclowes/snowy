@@ -121,7 +121,7 @@ def format_data(frame):
 
         x.append(pandas.concat(row, axis=1))
 
-    x = pandas.concat(x)
+    x = pandas.concat(x)  # type: pandas.DataFrame
     x.to_csv(cache_file)
 
     return x, y
