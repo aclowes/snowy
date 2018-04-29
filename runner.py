@@ -20,3 +20,12 @@ y2 = y2.loc['1990-03-02':'2017-03-31']
 
 
 importlib.reload(model); h = model.train_model(x2, y2)
+
+# save image to a file
+# import matplotlib
+# matplotlib.use('Agg')
+# import matplotlib.pyplot as plt
+# fig = plt.figure()
+# ax = fig.add_subplot(111)
+# ax.plot([1,2,3])
+# fig.savefig('test.png')

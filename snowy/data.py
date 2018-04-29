@@ -52,6 +52,12 @@ def get_station_history():
 
 
 def get_data():
+    try:
+        os.mkdir('data')
+    except OSError:
+        # already exists
+        pass
+
     cache_file = 'data/data.csv'
     if os.path.exists(cache_file):
         return pandas.read_csv(cache_file, index_col=0, header=[0, 1], parse_dates=True)
