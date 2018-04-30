@@ -1,0 +1,11 @@
+name: Snow forecast
+parameters:
+schedule: 0 0 *
+schedule_active: True
+
+tasks:
+- name: run forecast
+  queue: default
+  max_retries: 1
+  timeout: 30
+  command: ./runner.sh

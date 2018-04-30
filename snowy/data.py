@@ -1,5 +1,5 @@
 """
-Prepare the weather data
+Download and format the weather data
 """
 import io
 import os
@@ -32,6 +32,7 @@ columns = (
 
 
 def get_stations():
+    """Parse the list of stations to download"""
     start, stop, names = zip(*columns)
     positions = list(zip(start, stop))
     return pandas.read_fwf(
@@ -41,25 +42,29 @@ def get_stations():
 
 
 def get_station_history():
+    """
+    Returns what weather stations are available for download
+
+    We actually download just the stations listed above in `station_data`. This
+    might be useful to search for stations like this:
+
+    history[(history.first_date < datetime.datetime(1974, 1, 1))
+            & (history.last_date > datetime.datetime(2017, 11, 1))
+            & (history.state == 'UT') & (history.altitude > 2000)]
+    """
     start, stop, names = zip(*columns)
     positions = list(zip(start, stop))
     return pandas.read_fwf(
         'isd-history.txt', colspecs=positions, names=names,
         parse_dates=[9, 10], index_col=[0], skiprows=21, skip_blank_lines=True
     )
-    # history[(history.first_date < datetime.datetime(1974, 1, 1)) & (history.last_date > datetime.datetime(2017, 11, 1))
-    # & (history.state == 'UT') & (history.altitude > 2000)]
 
 
-def get_data():
-    try:
-        os.mkdir('data')
-    except OSError:
-        # already exists
-        pass
+def get_data(fresh=True):
+    """Get the weather history for all stations of interest since 1990"""
 
     cache_file = 'data/data.csv'
-    if os.path.exists(cache_file):
+    if os.path.exists(cache_file) and not fresh:
         return pandas.read_csv(cache_file, index_col=0, header=[0, 1], parse_dates=True)
 
     stations = get_stations()
@@ -67,24 +72,18 @@ def get_data():
     for year in range(1990, 2018):
         station_frames = []
         for station in stations.itertuples():
-            url = 'ftp://ftp.ncdc.noaa.gov/pub/data/gsod/{year}/{station}-{wban}-{year}' \
-                  '.op.gz'.format(year=year, station=station.Index, wban=station.wban)
-            frame = parser.load(url, station.call_sign)
+            raw_data = parser.load(year, station)
+            frame = parser.parse(raw_data, station.call_sign)
             station_frames.append(frame)
 
         frame = pandas.concat(station_frames, axis=1)
         year_frames.append(frame)
 
     frame = pandas.concat(year_frames)
-    frame.to_csv(cache_file)
-
-    # show the results
-    # frame.describe().loc[:, (slice(None), 'max_temp')]
-
     return frame
 
 
-def format_data(frame):
+def format_data(frame, fresh=True):
     stations = get_stations()
 
     # regularize to float 0-1
@@ -101,7 +100,7 @@ def format_data(frame):
     y = frame.iloc[60:, :].loc[:, ('KSLC', 'precipitation_norm')]
 
     cache_file = 'data/data_x.csv'
-    if os.path.exists(cache_file):
+    if os.path.exists(cache_file) and not fresh:
         x = pandas.read_csv(cache_file, index_col=[0], parse_dates=True)
         return x, y
 
@@ -131,46 +130,3 @@ def format_data(frame):
     x.to_csv(cache_file)
 
     return x, y
-
-
-def group_weeks(frame):
-    cache_file = 'data/data_weekly.csv'
-    if os.path.exists(cache_file):
-        return pandas.read_csv(cache_file, index_col=[0], parse_dates=True)
-
-    variables = ('temperature', 'pressure', 'precipitation', 'wind_speed')
-    stations = frame.columns.levels[0]
-    rows = []
-    week = 0
-
-    while week < len(frame) / 7 - 9:
-        columns = []
-        values = []
-        index = []
-
-        for station in stations:
-            if station == 'KSLC':
-                start = (week + 8) * 7
-                end = start + 7
-                index.append(frame.index[start])
-                columns.append('KSLC_prec')
-                values.append(
-                    frame.KSLC.precipitation_norm.iloc[start:end].mean()
-                )
-                continue
-            for column in variables:
-                series = frame[station][f'{column}_norm']
-                for x in range(4):
-                    start = (week + x) * 7
-                    end = start + 7
-                    columns.append(f'{station}_{column[:4]}_{x}')
-                    values.append(series.iloc[start:end].mean())
-
-        rows.append(
-            pandas.DataFrame([values], index=index, columns=columns)
-        )
-        week += 1
-
-    weekly = pandas.concat(rows)
-    weekly.to_csv(cache_file)
-    return weekly.drop('KSLC_prec', axis=1), weekly.KSLC_prec

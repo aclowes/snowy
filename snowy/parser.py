@@ -3,12 +3,15 @@ Parser for GSOD weather data format
 
 ftp://ftp.ncdc.noaa.gov/pub/data/gsod/readme.txt
 """
-import os
+import datetime
+import io
 import time
 import urllib.error
 import urllib.request
 
 import pandas
+
+from google.cloud import storage
 
 columns = (
     # start, stop, name, missing, type
@@ -44,30 +47,48 @@ columns = (
 )
 
 
-def load(url, call_sign):
-    filename = os.path.join('data', url.split('/')[-1])
-    if not os.path.exists(filename):
+def load(year, station):
+    """
+    Get the weather history for the given year and station record
+    either from cache or the FTP.
+    """
 
+    url = 'ftp://ftp.ncdc.noaa.gov/pub/data/gsod/{year}/{station}-{wban}-{year}' \
+          '.op.gz'.format(year=year, station=station.Index, wban=station.wban)
+
+    client = storage.Client()
+    bucket = client.bucket('static.yawn.live')
+    filename = url.split('/')[-1]
+    blob = bucket.blob(f'snowy/data/{filename}')
+
+    if year >= (datetime.date.today() - datetime.timedelta(days=7)) and blob.exists():
+        # get a new copy with the latest data
+        blob.delete()
+
+    if not blob.exists():
         while True:
             try:
-                time.sleep(5)
+                time.sleep(5)  # avoid throttling
                 print('Fetching {}'.format(url))
-                with urllib.request.urlopen(url) as request:
-                    with open(filename, 'wb') as file:
-                        file.write(request.read())
+                request = urllib.request.urlopen(url)
+                contents = request.read()
+                blob.upload_from_string(contents)
                 break
             except urllib.error.URLError as exc:
                 print('Could not load {} exception {}'.format(url, exc))
-                time.sleep(10)
+                time.sleep(5)
+    else:
+        contents = blob.download_as_string()
 
-    return parse(filename, call_sign)
+    return contents
 
 
-def parse(filename, call_sign):
+def parse(contents, call_sign):
+    """Parse the historical weather file format"""
     start, stop, names, missing = zip(*columns)
     missing = dict(zip(names, missing))
     positions = list(zip(start, stop))
-    frame = pandas.read_fwf(filename, colspecs=positions, names=names, na_values=missing,
+    frame = pandas.read_fwf(io.StringIO(contents), colspecs=positions, names=names, na_values=missing,
                             skiprows=1, compression='gzip', index_col=2)
     # convert the index to datetime and add station to the columns
     frame.index = pandas.DatetimeIndex(pandas.to_datetime(frame.index, format='%Y%m%d'))
