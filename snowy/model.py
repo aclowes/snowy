@@ -1,11 +1,15 @@
 import pandas
-import matplotlib
 from google.cloud import storage
 from keras import models, layers
 from sklearn.model_selection import train_test_split
 
+# configure rendering without window server, then import plt
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
-def train_model(x, y, image_output='file'):
+
+def train_model(x, y):
     x_train, x_test, y_train, y_test = train_test_split(
         x, y, test_size=0.2, random_state=42
     )
@@ -26,17 +30,10 @@ def train_model(x, y, image_output='file'):
         validation_data=(x_test.as_matrix(), y_test.as_matrix())
     )
 
-    if image_output == 'file':
-        # save image to a file
-        matplotlib.use('Agg')
-
-    # after configuring output!
-    import matplotlib.pyplot as plt
-
     # plot the loss history over the epochs
     pandas.DataFrame(history.history).plot()
     plt.title('Loss by epoch')
-    render_image(plt, image_output, 'history.png')
+    render_image(plt, 'history.png')
 
     # plot actual vs predicted - test data
     pred = m.predict(x_test.as_matrix())
@@ -47,7 +44,7 @@ def train_model(x, y, image_output='file'):
     plt.ylabel('Actual')
     plt.xlabel('Predicted')
     plt.plot(y_test, p, '+b')
-    render_image(plt, image_output, 'test_data.png')
+    render_image(plt, 'test_data.png')
 
     # plot actual vs predicted - train data
     pred = m.predict(x_train.as_matrix())
@@ -57,22 +54,26 @@ def train_model(x, y, image_output='file'):
     plt.ylabel('Actual')
     plt.xlabel('Predicted')
     plt.plot(y_train, p, '+b')
-    render_image(plt, image_output, 'train_data.png')
+    render_image(plt, 'train_data.png')
+
+    # upload html file
+    client = storage.Client()
+    bucket = client.bucket('static.yawn.live')
+    blob = bucket.blob('snowy/index.html')
+    blob.upload_from_filename('index.html')
+    blob.make_public()
+    print('View the results at http://static.yawn.live/snowy/')
 
     return history
 
 
-def render_image(plt, image_output, filename):
-    if image_output == 'file':
-        plt.savefig(f'data/{filename}')
+def render_image(plt, filename):
+    plt.savefig(f'data/{filename}')
 
-        client = storage.Client()
-        bucket = client.bucket('static.yawn.live')
-        blob = bucket.blob(f'snowy/{filename}')
-        blob.upload_from_filename(f'data/{filename}')
-        blob.make_public()
-
-    else:
-        plt.show()
+    client = storage.Client()
+    bucket = client.bucket('static.yawn.live')
+    blob = bucket.blob(f'snowy/{filename}')
+    blob.upload_from_filename(f'data/{filename}')
+    blob.make_public()
 
     plt.clf()

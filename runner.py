@@ -1,11 +1,12 @@
 import importlib
+import os
 
 from snowy import data, model, parser
 
 fresh = True
 
 
-def main():
+def runner():
     frame = data.get_data(fresh)
     x, y = data.format_data(frame, fresh)
     x2 = x[(x.index.month == 12) | (x.index.month <= 3)]
@@ -25,5 +26,13 @@ def main():
 # y2 = y.apply(lambda x: 1 if x > 0.1 else 0)
 # y2.describe()
 
-# os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'data/YAWN-service-account.json'
-# importlib.reload(model); h = model.train_model(x2, y2)
+
+def local_runner():
+    global fresh
+    fresh = False
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'data/YAWN-service-account.json'
+    importlib.reload(model); h = model.train_model(x2, y2)
+
+
+if __name__ == '__main__':
+    runner()
