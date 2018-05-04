@@ -61,7 +61,7 @@ def load(year, station):
     filename = url.split('/')[-1]
     blob = bucket.blob(f'snowy/data/{filename}')
 
-    if year >= (datetime.date.today() - datetime.timedelta(days=7)) and blob.exists():
+    if year >= (datetime.date.today() - datetime.timedelta(days=7)).year and blob.exists():
         # get a new copy with the latest data
         blob.delete()
 

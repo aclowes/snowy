@@ -1,5 +1,6 @@
 import importlib
 import os
+import sys
 
 from snowy import data, model, parser
 
@@ -31,8 +32,12 @@ def local_runner():
     global fresh
     fresh = False
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'data/YAWN-service-account.json'
-    importlib.reload(model); h = model.train_model(x2, y2)
+    runner()
+    # importlib.reload(model); h = model.train_model(x2, y2)
 
 
 if __name__ == '__main__':
-    runner()
+    if len(sys.argv) > 1 and sys.argv[1] == 'local':
+        local_runner()
+    else:
+        runner()
