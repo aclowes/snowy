@@ -88,7 +88,7 @@ def parse(contents, call_sign):
     start, stop, names, missing = zip(*columns)
     missing = dict(zip(names, missing))
     positions = list(zip(start, stop))
-    frame = pandas.read_fwf(io.StringIO(contents), colspecs=positions, names=names, na_values=missing,
+    frame = pandas.read_fwf(io.BytesIO(contents), colspecs=positions, names=names, na_values=missing,
                             skiprows=1, compression='gzip', index_col=2)
     # convert the index to datetime and add station to the columns
     frame.index = pandas.DatetimeIndex(pandas.to_datetime(frame.index, format='%Y%m%d'))

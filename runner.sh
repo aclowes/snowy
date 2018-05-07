@@ -8,8 +8,8 @@ ls snowy || git clone https://github.com/aclowes/snowy.git
 cd snowy
 git pull
 
-pip install --upgrade pip setuptools
-pip install -r requirements.txt
+pip install -q --upgrade pip setuptools
+pip install -q -r requirements.txt
 
 mkdir -p data
 python runner.py
