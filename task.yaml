@@ -6,4 +6,4 @@ tasks:
 - name: run forecast
   queue: default
   max_retries: 1
-  command: curl https://raw.githubusercontent.com/aclowes/snowy/master/runner.sh | bash
+  command: curl -s https://raw.githubusercontent.com/aclowes/snowy/master/runner.sh | bash

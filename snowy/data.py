@@ -70,6 +70,7 @@ def get_data(fresh=True):
     stations = get_stations()
     year_frames = []
     for year in range(1990, 2018):
+        print(f'Now fetching history for {year}')
         station_frames = []
         for station in stations.itertuples():
             raw_data = parser.load(year, station)
@@ -79,7 +80,8 @@ def get_data(fresh=True):
         frame = pandas.concat(station_frames, axis=1)
         year_frames.append(frame)
 
-    frame = pandas.concat(year_frames)
+    frame = pandas.concat(year_frames)  # type: pandas.DataFrame
+    frame.to_csv(cache_file)
     return frame
 
 
@@ -96,7 +98,7 @@ def format_data(frame, fresh=True):
     # fill missing data
     frame.fillna(0, inplace=True)
 
-    # dependent variable is SLC precipitation
+    # dependent variable is SLC precipitation, forecasting 60 days in the future
     y = frame.iloc[60:, :].loc[:, ('KSLC', 'precipitation_norm')]
 
     cache_file = 'data/data_x.csv'
@@ -106,27 +108,14 @@ def format_data(frame, fresh=True):
 
     # independent variables are precipitation, temperature, pressure, and wind_speed
     # 4 variables * 6 stations * 30 days = 720 variables?
-    x = []
-
-    for index in range(len(y)):
-        start = frame.index[index]
-        stop = frame.index[index + 29]
-        date = y.index[index]
-        print(f'Now populating {date}')
-
-        row = []
+    data = {}
+    for offset in range(30):
         for station in stations.itertuples():
-            window = frame.loc[start:stop, station.call_sign]
-
+            window = frame.iloc[offset:offset - 60].loc[:, station.call_sign]
             for column in ('temperature', 'pressure', 'precipitation', 'wind_speed'):
-                names = [f'{station.call_sign}_{column[:4]}_{x}' for x in range(30)]
-                array = [list(window[column + '_norm'])]
-                array = pandas.DataFrame(array, index=[date], columns=names)
-                row.append(array)
+                data[f'{station.call_sign}_{column[:4]}_{offset}'] = window[column + '_norm'].values
 
-        x.append(pandas.concat(row, axis=1))
-
-    x = pandas.concat(x)  # type: pandas.DataFrame
+    x = pandas.DataFrame(data, index=y.index)
     x.to_csv(cache_file)
 
     return x, y

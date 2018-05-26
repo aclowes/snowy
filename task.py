@@ -20,7 +20,7 @@ def create_workflow():
 
 
 def start_run(wkfl_id):
-    data = {'workflow_id': wkfl_id, 'parameters': {}}
+    data = {'workflow_id': wkfl_id}
     client('post', 'runs/', data)
 
 
