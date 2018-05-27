@@ -97,8 +97,10 @@ def parse(contents, call_sign):
 
 
 def parse_snotel(filename):
+    url = 'https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/daily/766:UT:SNTL%7Cid=%22%' \
+          '22%7Cname/POR_BEGIN,POR_END/WTEQ::value,PREC::value,TMAX::value,TMIN::value,TAVG::value,PRCP::value'
     frame = pandas.read_csv(
-        filename, index_col=[0], parse_dates=True, skiprows=58,
+        url, index_col=[0], parse_dates=True, skiprows=58,
     )
     frame.columns = ['water', 'total_prec', 'max', 'min', 'avg', 'prec']
     return frame[:-1]
