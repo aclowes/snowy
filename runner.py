@@ -17,7 +17,8 @@ def runner():
     y2 = snow.prec
     y2 = (y2 - y2.mean()) / (y2.max() - y2.min())
     y2 = y2[(y2.index.month == 12) | (y2.index.month <= 3)]
-    y2 = y2.loc['1990-03-02':'2017-03-31']
+    # cut to period covered by weather data
+    y2 = y2.loc[x2.index[0]:x2.index[-1]]
 
     h = model.train_model(x2, y2)
 

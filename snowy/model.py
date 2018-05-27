@@ -56,6 +56,21 @@ def train_model(x, y):
     plt.plot(y_train, p, '+b')
     render_image(plt, 'train_data.png')
 
+    # plot actual and predicted test data over time
+    pred = m.predict(x_test.as_matrix())
+    p = pandas.Series(pred.flatten())
+    p.index = y_test.index
+    a = pandas.DataFrame({'actual': y_test, 'predicted': p})
+    b = a.resample('AS-DEC').mean()
+    # years = [group[1] for group in a.groupby(a.index.year)]
+    # print(f'Test data correlation {p.corr(y_test)}')
+    plt.title('Predicted vs Actual')
+    plt.ylabel('Snowiness')
+    plt.xlabel('Date')
+    plt.plot(b.index, b['actual'], '+b')
+    plt.plot(b.index, b['predicted'], 'or')
+    render_image(plt, 'compare_by_year.png')
+
     # upload html file
     client = storage.Client()
     bucket = client.bucket('static.yawn.live')
