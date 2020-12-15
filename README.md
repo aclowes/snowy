@@ -18,5 +18,5 @@ Make a 'framework' virtualenv to support matplotlib:
     pyenv install 3.6.3
 
     PYTHON_CONFIGURE_OPTS="--enable-framework" \
-    pyenv virtualenv 3.6.3 snowy
-
+    pyenv virtualenv 3.6.3 snowman
+    pyenv local snowman
